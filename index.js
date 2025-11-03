@@ -4,23 +4,23 @@ const axios = require("axios");
 const app = express();
 app.use(express.json());
 
-// 🔑 Replace this with your GHL API key
-const GHL_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6InJiMVMxZlBpQ3ZGd1JzWEE0Qm9hIiwidmVyc2lvbiI6MSwiaWF0IjoxNzYyMTc0MjQ4MjY0LCJzdWIiOiIzSWNobFF4NHNoZVoyWmVoYk4xTiJ9.DMJWuIXQcoKIwYTAya_ACEwTLafUFCTaSoiO71mjNnM";
+// 🔑 Your GHL API key
+const GHL_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6InJiMVMxZlBpQ3ZGd1JzWEE0Qm9hIiwidmVyc2lvbiI6MSwiaWF0IjoxNzYyMTc3OTI4ODEwLCJzdWIiOiIzSWNobFF4NHNoZVoyWmVoYk4xTiJ9.01Gj0QGRIMW8HstPqOSd5iRZfT3CfvP7Lqp-ut8tKPI";
 
 // Webhook endpoint for VAPI
 app.post("/webhook", async (req, res) => {
   console.log("Webhook /webhook triggered");
-  console.log("Incoming request body:", req.body);
+  console.log("Incoming request:", req.body);
 
   const { callerNumber, recordingUrl, transcript } = req.body;
 
   if (!callerNumber) {
-    console.log("No callerNumber provided in the request");
+    console.log("No callerNumber provided in request");
     return res.status(400).send("Missing callerNumber");
   }
 
   try {
-    // Step 1: Look up the contact in GHL by phone number
+    // 1️⃣ Lookup contact by phone
     let searchResponse = await axios.get(
       `https://rest.gohighlevel.com/v1/contacts/lookup?phone=${encodeURIComponent(callerNumber)}`,
       {
@@ -33,8 +33,9 @@ app.post("/webhook", async (req, res) => {
 
     let contact = searchResponse.data.contact;
 
-    // Step 2: Auto-create contact if it doesn't exist
+    // 2️⃣ Create contact if not found
     if (!contact) {
+      console.log("No contact found. Creating a new one...");
       const createResponse = await axios.post(
         "https://rest.gohighlevel.com/v1/contacts/",
         { phone: callerNumber },
@@ -49,7 +50,7 @@ app.post("/webhook", async (req, res) => {
       console.log("Created new contact:", contact.id);
     }
 
-    // Step 3: Add a note to the contact
+    // 3️⃣ Add note with transcript and recording
     const noteText = `📞 Call Transcript:\n${transcript || "No transcript"}\n\n🎧 Recording: ${recordingUrl || "No recording URL"}`;
 
     await axios.post(
@@ -58,18 +59,4 @@ app.post("/webhook", async (req, res) => {
       {
         headers: {
           Authorization: `Bearer ${GHL_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    console.log("✅ Note added to GHL contact:", contact.id);
-    res.status(200).send("Transcript and recording added to contact");
-  } catch (error) {
-    console.error("❌ Error adding note to GHL:", error.response?.data || error.message);
-    res.status(500).send("Error adding note to GHL");
-  }
-});
-
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+          "Content-Type": "applica
