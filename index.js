@@ -1,4 +1,5 @@
 const express = require("express");
+const fetch = require("node-fetch"); // optional for GHL posting
 const app = express();
 app.use(express.json());
 
