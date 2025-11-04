@@ -3,23 +3,22 @@ const multer = require('multer');
 const axios = require('axios');
 
 const app = express();
-const upload = multer(); // no disk storage, keeps files in memory
+const upload = multer(); // store files in memory
 
-// Environment variables
-const CLIENT_SECRET = process.env.CLIENT_SECRET; // for your server auth
-const GHL_API_KEY = process.env.GHL_API_KEY;     // your GHL API key
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const GHL_API_KEY = process.env.GHL_API_KEY;
 
 if (!CLIENT_SECRET || !GHL_API_KEY) {
-  console.error("CLIENT_SECRET or GHL_API_KEY not set in environment!");
+  console.error("CLIENT_SECRET or GHL_API_KEY not set!");
   process.exit(1);
 }
 
-// Basic route to check server
+// Root route to test server
 app.get('/', (req, res) => {
-  res.send('Voice upload server is running.');
+  res.send('✅ Voice upload server is running.');
 });
 
-// Endpoint to receive voice files
+// Voice upload endpoint
 app.post('/voice', upload.single('voiceFile'), async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
@@ -28,15 +27,9 @@ app.post('/voice', upload.single('voiceFile'), async (req, res) => {
     }
 
     const { contactId } = req.body;
-    if (!contactId) {
-      return res.status(400).send("Missing contactId");
-    }
+    if (!contactId) return res.status(400).send("Missing contactId");
+    if (!req.file || !req.file.buffer) return res.status(400).send("No file uploaded");
 
-    if (!req.file || !req.file.buffer) {
-      return res.status(400).send("No file uploaded");
-    }
-
-    // Prepare form data for GHL
     const FormData = require('form-data');
     const formData = new FormData();
     formData.append('note', 'Voice recording uploaded via VAPI');
@@ -45,7 +38,6 @@ app.post('/voice', upload.single('voiceFile'), async (req, res) => {
       contentType: req.file.mimetype
     });
 
-    // Send file to GHL
     const ghlUrl = `https://rest.gohighlevel.com/v1/contacts/${contactId}/notes`;
 
     await axios.post(ghlUrl, formData, {
@@ -62,7 +54,6 @@ app.post('/voice', upload.single('voiceFile'), async (req, res) => {
   }
 });
 
-// Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
